@@ -1,0 +1,4 @@
+www.oriax.crc, www.oriax.crc {
+    tls internal
+    reverse_proxy localhost:8501
+}
