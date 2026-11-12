@@ -528,7 +528,7 @@ with st.sidebar:
     st.markdown("---")
     with st.expander("📊 Painel Gerencial (Acessos)"):
         senha_gerente = st.text_input("Senha do Gerente:", type="password")
-        if senha_gerente == "oriax2026":
+        if senha_gerente == "Creci282678FSP":
             try:
                 conn = sqlite3.connect(DB_PATH, check_same_thread=False)
                 df_logs = pd.read_sql_query("SELECT * FROM acessos ORDER BY id DESC", conn)
