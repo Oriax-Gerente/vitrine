@@ -4,6 +4,9 @@ import base64
 import unicodedata
 import os
 import sys
+import sqlite3
+from datetime import datetime
+import pandas as pd
 
 # ==============================================================================
 # 1. CONFIGURAÇÃO DA PÁGINA E METADADOS
@@ -16,7 +19,44 @@ st.set_page_config(
 )
 
 # ==============================================================================
-# 2. CONSTANTES E UTILITÁRIOS DE IMAGEM (SEM CACHE PARA LER NOVAS FOTOS NA HORA)
+# 2. SISTEMA DE BANCO DE DADOS E ESTATÍSTICAS (CONTADOR DE VISITAS E CLIQUES)
+# ==============================================================================
+DB_PATH = "estatisticas_vitrine.db"
+
+def inicializar_banco():
+    try:
+        conn = sqlite3.connect(DB_PATH, check_same_thread=False)
+        cursor = conn.cursor()
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS acessos (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                data_hora TEXT,
+                tipo_evento TEXT,
+                detalhe TEXT
+            )
+        """)
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        print(f"Erro ao inicializar banco de dados: {e}")
+
+def registrar_evento(tipo_evento: str, detalhe: str = "Geral"):
+    try:
+        conn = sqlite3.connect(DB_PATH, check_same_thread=False)
+        cursor = conn.cursor()
+        data_hora = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        cursor.execute("INSERT INTO acessos (data_hora, tipo_evento, detalhe) VALUES (?, ?, ?)", 
+                       (data_hora, tipo_evento, detalhe))
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        print(f"Erro ao registrar evento: {e}")
+
+# Inicializa o banco de dados na carga da aplicação
+inicializar_banco()
+
+# ==============================================================================
+# 3. CONSTANTES E UTILITÁRIOS DE IMAGEM
 # ==============================================================================
 WHATSAPP_NUMERO = "5511982003873"
 WHATSAPP_DISPLAY = "(11) 98200-3873"
@@ -30,7 +70,6 @@ def obter_caminho_recurso(caminho_relativo: str) -> str:
     return os.path.join(base_dir, caminho_relativo)
 
 def normalizar_texto(texto: str) -> str:
-    """Remove acentos, espaços e padroniza hífens/underlines para achar qualquer foto."""
     nfkd = unicodedata.normalize("NFKD", texto.lower())
     sem_acento = "".join([c for c in nfkd if not unicodedata.combining(c)])
     return sem_acento.replace("-", "_").replace(" ", "_")
@@ -45,20 +84,16 @@ def carregar_imagem_base64(caminho_arquivo: str) -> str:
     return f"data:image/{mime};base64,{dados_b64}"
 
 def obter_empreendimento_imagem(nome_arquivo_imagem: str) -> str:
-    """Busca a foto na pasta 'imagens/' aceitando variações de acento, hífen ou extensão."""
     if not nome_arquivo_imagem:
         return ""
-
     pasta_imagens = obter_caminho_recurso("imagens")
     if not os.path.exists(pasta_imagens):
         return ""
 
-    # 1. Tenta o caminho exato primeiro
     caminho_exato = os.path.join(pasta_imagens, nome_arquivo_imagem)
     if os.path.exists(caminho_exato):
         return carregar_imagem_base64(caminho_exato)
 
-    # 2. Varre a pasta 'imagens/' comparando nomes normalizados (ignora acento/hífen/extensão)
     alvo_norm = normalizar_texto(os.path.splitext(nome_arquivo_imagem)[0])
     extensoes_validas = {".jpg", ".jpeg", ".png", ".webp"}
 
@@ -85,7 +120,7 @@ def formatar_moeda_br(valor: float) -> str:
     return f"R$ {valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
 # ==============================================================================
-# 3. ESTILIZAÇÃO VISUAL (TEMA ESCURO + VERDE, BRANCO, LARANJA)
+# 4. ESTILIZAÇÃO VISUAL (TEMA ESCURO + VERDE, BRANCO, LARANJA)
 # ==============================================================================
 st.markdown("""
 <style>
@@ -111,7 +146,6 @@ st.markdown("""
         display: inline-block; margin-bottom: 12px;
     }
 
-    /* Estrutura do Card de E-commerce */
     .product-card {
         background-color: #151C28;
         border: 1px solid #263143;
@@ -129,7 +163,6 @@ st.markdown("""
         box-shadow: 0 8px 24px rgba(16, 185, 129, 0.15);
     }
 
-    /* CAIXA PADRÃO DA IMAGEM: Altura fixa exata de 185px para todos os cards */
     .card-img-container {
         width: 100%;
         height: 185px;
@@ -172,7 +205,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ==============================================================================
-# 4. BASE DE DADOS DOS EMPREENDIMENTOS
+# 5. BASE DE DADOS DOS EMPREENDIMENTOS
 # ==============================================================================
 EMPREENDIMENTOS = [
     {
@@ -431,8 +464,13 @@ EMPREENDIMENTOS = [
     }
 ]
 
+# Registrar visita única por sessão do usuário
+if "visitou_vitrine" not in st.session_state:
+    registrar_evento("visualizacao_pagina", "Home Principal")
+    st.session_state["visitou_vitrine"] = True
+
 # ==============================================================================
-# 5. BARRA LATERAL (LOGO + FILTROS + SIMULADOR)
+# 6. BARRA LATERAL (LOGO + FILTROS + SIMULADOR + PAINEL DE ESTATÍSTICAS)
 # ==============================================================================
 logo_uri = carregar_logo_base64()
 
@@ -479,10 +517,39 @@ with st.sidebar:
     st.info(f"💡 **Parcela estimada:** {formatar_moeda_br(parcela_estimada)}/mês")
 
     msg_simulacao = f"Olá! Gostaria de fazer uma simulação de financiamento EMCCAMP|INX com a equipe do {GERENTE_NOME}. Renda: {formatar_moeda_br(renda_cliente)}, FGTS: {formatar_moeda_br(fgts_cliente)}."
-    st.link_button(f"📲 Enviar Simulação ao {GERENTE_NOME}", gerar_link_whatsapp(msg_simulacao), use_container_width=True)
+    
+    # Botão de simulação com rastreamento
+    if st.link_button(f"📲 Enviar Simulação ao {GERENTE_NOME}", gerar_link_whatsapp(msg_simulacao), use_container_width=True):
+        registrar_evento("clique_botao", "Simulador Rápido MCMV")
+
+    # ==========================================================================
+    # PAINEL GERENCIAL DE ACESSOS E CLIQUES (ÁREA DO GERENTE)
+    # ==========================================================================
+    st.markdown("---")
+    with st.expander("📊 Painel Gerencial (Acessos)"):
+        senha_gerente = st.text_input("Senha do Gerente:", type="password")
+        if senha_gerente == "oriax2026":
+            try:
+                conn = sqlite3.connect(DB_PATH, check_same_thread=False)
+                df_logs = pd.read_sql_query("SELECT * FROM acessos ORDER BY id DESC", conn)
+                conn.close()
+
+                total_visitas = len(df_logs[df_logs["tipo_evento"] == "visualizacao_pagina"])
+                total_cliques = len(df_logs[df_logs["tipo_evento"] == "clique_imovel"])
+
+                st.metric("Total de Visitas Únicas", total_visitas)
+                st.metric("Cliques em Imóveis", total_cliques)
+
+                if not df_logs.empty:
+                    st.markdown("#### Últimos Registros:")
+                    st.dataframe(df_logs.head(10), use_container_width=True)
+            except Exception as e:
+                st.error(f"Erro ao carregar dados: {e}")
+        elif senha_gerente:
+            st.error("Senha incorreta!")
 
 # ==============================================================================
-# 6. BANNER HERO
+# 7. BANNER HERO
 # ==============================================================================
 msg_geral = f"Olá! Acessei o catálogo digital da EMCCAMP|INX e gostaria de ser atendido pela equipe de corretores do {GERENTE_NOME}."
 
@@ -497,11 +564,12 @@ st.markdown(
     f'</div>',
     unsafe_allow_html=True
 )
-st.link_button(f"💬 Falar no WhatsApp: {WHATSAPP_DISPLAY} ({GERENTE_NOME})", gerar_link_whatsapp(msg_geral), use_container_width=True)
+if st.link_button(f"💬 Falar no WhatsApp: {WHATSAPP_DISPLAY} ({GERENTE_NOME})", gerar_link_whatsapp(msg_geral), use_container_width=True):
+    registrar_evento("clique_botao", "Banner Principal WhatsApp")
 st.write("")
 
 # ==============================================================================
-# 7. FILTRAGEM E EXIBIÇÃO EM GRID PROFISSIONAL (HTML LINEAR SEM INDENTAÇÃO)
+# 8. FILTRAGEM E EXIBIÇÃO EM GRID PROFISSIONAL
 # ==============================================================================
 def filtrar_lista(sigla_estado=None):
     filtrados = []
@@ -573,7 +641,10 @@ def renderizar_grade(imoveis):
                     st.markdown(html_card, unsafe_allow_html=True)
 
                     msg_wpp = f"Olá! Tenho interesse no empreendimento *{emp['nome']}* ({emp['cidade']} - {emp['estado']}). Gostaria de receber a tabela de valores com a equipe do {GERENTE_NOME}."
-                    st.link_button("📲 Consultar Equipe Gerente", gerar_link_whatsapp(msg_wpp), use_container_width=True)
+                    
+                    # Botão individual de clique no imóvel com rastreamento
+                    if st.link_button(f"📲 Consultar Equipe Gerente", gerar_link_whatsapp(msg_wpp), use_container_width=True):
+                        registrar_evento("clique_imovel", emp["nome"])
 
 # Abas por Estado
 aba_todos, aba_sp, aba_rj, aba_mg = st.tabs([
@@ -604,7 +675,7 @@ with aba_mg:
     renderizar_grade(lista)
 
 # ==============================================================================
-# 8. RODAPÉ INSTITUCIONAL COM CONTATO DIRETO
+# 9. RODAPÉ INSTITUCIONAL COM CONTATO DIRETO
 # ==============================================================================
 st.markdown(f"""
 <div class="custom-footer">
