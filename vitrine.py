@@ -198,26 +198,35 @@ st.markdown("""
         background-color: #151C28;
         border: 1px solid #263143;
         border-top: 3px solid #F97316;
-        border-radius: 14px;
-        padding: 32px;
-        margin-top: 40px;
+        border-radius: 16px;
+        padding: 38px 28px;
+        margin-top: 50px;
         text-align: center;
         color: #D1D5DB;
-        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+        box-shadow: 0 12px 35px rgba(0, 0, 0, 0.5);
+    }
+
+    .footer-section-box {
+        background-color: #0F1520;
+        border: 1px solid #263143;
+        border-radius: 12px;
+        padding: 24px;
+        margin: 20px 0;
+        text-align: left;
     }
 
     .footer-whatsapp-btn {
         display: inline-block;
         background: linear-gradient(135deg, #10B981 0%, #059669 100%);
         color: #FFFFFF !important;
-        padding: 14px 28px;
+        padding: 14px 30px;
         border-radius: 8px;
         font-weight: 800;
         font-size: 1.05rem;
         text-decoration: none !important;
         box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
         transition: transform 0.2s ease, box-shadow 0.2s ease;
-        margin: 16px 0;
+        margin: 10px 0;
     }
     .footer-whatsapp-btn:hover {
         transform: translateY(-2px);
@@ -437,20 +446,36 @@ st.markdown(f"**Exibindo {len(lista_imoveis)} empreendimento(s) disponível(is)*
 renderizar_grade(lista_imoveis)
 
 # ==============================================================================
-# 9. RODAPÉ INSTITUCIONAL COM ESTILO PREMIUM
+# 9. RODAPÉ INSTITUCIONAL EXPANDIDO (CLIENTES + RECRUTAMENTO DE CORRETORES)
 # ==============================================================================
+msg_recrutamento = f"Olá, {GERENTE_NOME}! Vi a chamada no portal da EMCCAMP|INX e tenho muito interesse em fazer parte da sua equipe de corretores. Poderia me orientar sobre os próximos passos?"
+
 st.markdown(f"""
 <div class="custom-footer">
-    <h3 style="color:#FFFFFF; margin-bottom:8px; font-size:1.4rem; font-weight:800;">Atendimento Exclusivo — Equipe de Corretores do {GERENTE_NOME}</h3>
-    <p style="color:#9CA3AF; font-size:0.95rem; max-width:750px; margin:0 auto 16px auto; line-height: 1.5;">
-        Consultoria especializada em Minha Casa Minha Vida, Casa Paulista, uso de FGTS e aprovação de crédito junto à Caixa Econômica Federal.
-        Todos os atendimentos deste portal são direcionados diretamente para a equipe do <strong>{GERENTE_NOME}</strong>.
+    <h2 style="color:#FFFFFF; margin-bottom:12px; font-size:1.6rem; font-weight:800;">Referência em Real Estate e Oportunidades em São Paulo</h2>
+    <p style="color:#9CA3AF; font-size:1.0rem; max-width:850px; margin:0 auto 24px auto; line-height: 1.6;">
+        Oferecemos consultoria imobiliária de excelência com foco nos programas <strong>Minha Casa Minha Vida</strong> e <strong>Casa Paulista</strong>, 
+        auxiliando na utilização inteligente do FGTS e na aprovação de crédito ágil junto à <strong>Caixa Econômica Federal</strong>. 
+        Segurança jurídica, clareza e as melhores condições de construtora garantidas pela equipe do <strong>{GERENTE_NOME}</strong>.
     </p>
+    
     <a href="{gerar_link_whatsapp(msg_geral)}" target="_blank" class="footer-whatsapp-btn">
-        📞 Chamar no WhatsApp: {WHATSAPP_DISPLAY}
+        📞 Fale com a Equipe de Atendimento: {WHATSAPP_DISPLAY}
     </a>
-    <p style="color:#6B7280; font-size:0.8rem; margin-top:18px;">
-        *Valores iniciais sujeitos à disponibilidade de unidades e alteração de tabela pela incorporadora sem aviso prévio.
+
+    <div class="footer-section-box">
+        <h3 style="color:#10B981; margin-bottom:10px; font-size:1.25rem; font-weight:700;">🚀 Quer Crescer Conosco? Faça Parte da Equipe do {GERENTE_NOME}!</h3>
+        <p style="color:#D1D5DB; font-size:0.95rem; line-height: 1.6; margin-bottom: 16px;">
+            Você é corretor experiente em busca de um plantão estruturado com alto volume de leads e suporte de gestão profissional, ou está a dar os primeiros passos na carreira e quer aprender ao lado dos melhores? 
+            Nossa equipe na <strong>EMCCAMP | INX</strong> oferece suporte contínuo, treinamento de vendas, ferramentas de automação e um ambiente focado em alta performance e resultados reais no mercado imobiliário paulista.
+        </p>
+        <a href="{gerar_link_whatsapp(msg_recrutamento)}" target="_blank" class="footer-whatsapp-btn" style="background: linear-gradient(135deg, #F97316 0%, #EA580C 100%); font-size: 0.95rem; padding: 12px 24px;">
+            🤝 Quero Trabalhar ou Indicar um Amigo para a Equipe
+        </a>
+    </div>
+
+    <p style="color:#6B7280; font-size:0.8rem; margin-top:20px;">
+        *Valores iniciais sujeitos à disponibilidade de unidades e alteração de tabela pela incorporadora sem aviso prévio. Portal gerido com exclusividade pela equipe comercial do {GERENTE_NOME}.
     </p>
 </div>
 """, unsafe_allow_html=True)
