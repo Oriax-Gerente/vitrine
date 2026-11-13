@@ -52,7 +52,6 @@ def registrar_evento(tipo_evento: str, detalhe: str = "Geral"):
     except Exception as e:
         print(f"Erro ao registrar evento: {e}")
 
-# Inicializa o banco de dados na carga da aplicação
 inicializar_banco()
 
 # ==============================================================================
@@ -214,7 +213,7 @@ EXCEL_PATH = obter_caminho_recurso("tabelavitrine.xlsx")
 
 def carregar_empreendimentos():
     if not os.path.exists(EXCEL_PATH):
-        st.error(f"⚠️ O arquivo '{EXCEL_PATH}' não foi encontrado na pasta do projeto! Crie a planilha com os dados de SP.")
+        st.error(f"⚠️ O arquivo '{EXCEL_PATH}' não foi encontrado na pasta do projeto!")
         return []
     
     try:
@@ -229,10 +228,6 @@ def carregar_empreendimentos():
         # Garante conversão correta dos preços
         if "preco_a_partir" in df.columns:
             df["preco_a_partir"] = pd.to_numeric(df["preco_a_partir"], errors="coerce").fillna(0.0)
-            
-        # Filtra apenas o estado de São Paulo (SP) caso haja outros registros por engano
-        if "estado" in df.columns:
-            df = df[df["estado"].str.upper() == "SP"]
 
         return df.to_dict(orient="records")
     
@@ -268,10 +263,13 @@ with st.sidebar:
 
     st.markdown("### 🔍 Filtrar Imóveis")
     
+    # Lê dinamicamente todos os status presentes na planilha Excel
+    opcoes_status = sorted(list(set(str(emp.get("status", "")).strip() for emp in EMPREENDIMENTOS if str(emp.get("status", "")).strip())))
+    
     status_selecionado = st.multiselect(
-        "Estágio da Obra:",
-        options=["Breve Lançamento", "Lançamento", "Em Construção", "Pronto para Morar"],
-        default=["Breve Lançamento", "Lançamento", "Em Construção", "Pronto para Morar"]
+        "Estágio da Obra / Status:",
+        options=opcoes_status,
+        default=opcoes_status
     )
 
     preco_max = st.slider(
@@ -279,7 +277,7 @@ with st.sidebar:
         min_value=100000, max_value=800000, value=600000, step=10000, format="R$ %d"
     )
 
-    busca_texto = st.text_input("Buscar por bairro ou nome:", placeholder="Ex: Santo Amaro, Praça da Árvore...")
+    busca_texto = st.text_input("Buscar por bairro ou nome:", placeholder="Ex: Santo Amaro, Jundiaí...")
 
     st.markdown("---")
     st.markdown("### 🧮 Simulação Rápida MCMV")
@@ -327,10 +325,10 @@ msg_geral = f"Olá! Acessei o catálogo digital da EMCCAMP|INX e gostaria de ser
 
 st.markdown(
     f'<div class="hero-banner">'
-    f'<div class="hero-badge">PORTFÓLIO OFICIAL • SÃO PAULO (SP)</div>'
+    f'<div class="hero-badge">PORTFÓLIO OFICIAL • SÃO PAULO E REGIÃO</div>'
     f'<h1 style="color: #FFFFFF; font-size: 2.3rem; margin-bottom: 10px;">Conquiste seu EMCCAMP|INX com Condições Diretas de Construtora</h1>'
     f'<p style="color: #D1D5DB; font-size: 1.05rem; margin-bottom: 20px;">'
-    f'Explore todos os lançamentos, obras em andamento e imóveis prontos em <strong>São Paulo e Grande SP</strong>. '
+    f'Explore todos os lançamentos, obras em andamento, imóveis prontos e empreendimentos no interior paulista. '
     f'Atendimento exclusivo realizado pela <strong>equipe de corretores do {GERENTE_NOME}</strong>.'
     f'</p>'
     f'</div>',
@@ -346,13 +344,17 @@ st.write("")
 def filtrar_lista():
     filtrados = []
     for item in EMPREENDIMENTOS:
-        if item["status"] not in status_selecionado:
+        status_item = str(item.get("status", "")).strip()
+        if status_item not in status_selecionado:
             continue
-        if float(item["preco_a_partir"]) > preco_max:
+        
+        preco_val = float(item.get("preco_a_partir", 0))
+        if preco_val > 0 and preco_val > preco_max:
             continue
+            
         if busca_texto.strip():
             termo = busca_texto.lower().strip()
-            if termo not in item["nome"].lower() and termo not in item["cidade"].lower() and termo not in item["diferenciais"].lower():
+            if termo not in str(item.get("nome", "")).lower() and termo not in str(item.get("cidade", "")).lower() and termo not in str(item.get("diferenciais", "")).lower():
                 continue
         filtrados.append(item)
     return filtrados
@@ -372,15 +374,19 @@ def renderizar_grade(imoveis):
                     if img_uri:
                         bloco_img = f'<div class="card-img-container"><img src="{img_uri}" class="card-img"></div>'
                     else:
-                        bloco_img = f'<div class="card-img-container"><div class="card-img-placeholder"><span>🏢 EMCCAMP|INX • {emp["nome"]}</span></div></div>'
+                        bloco_img = f'<div class="card-img-container"><div class="card-img-placeholder"><span>🏢 EMCCAMP|INX • {emp.get("nome", "")}</span></div></div>'
 
-                    status_emp = str(emp["status"])
+                    status_emp = str(emp.get("status", "Disponível"))
                     if "Lançamento" in status_emp:
                         badge_status = f'<span style="background:rgba(249,115,22,0.18); color:#FB923C; border:1px solid #F97316; padding:2px 8px; border-radius:4px; font-size:0.7rem; font-weight:700;">{status_emp}</span>'
-                    elif "Pronto" in status_emp:
+                    elif "Pronto" in status_emp or "Entregue" in status_emp:
                         badge_status = f'<span style="background:rgba(255,255,255,0.15); color:#FFFFFF; border:1px solid #FFFFFF; padding:2px 8px; border-radius:4px; font-size:0.7rem; font-weight:700;">{status_emp}</span>'
                     else:
                         badge_status = f'<span style="background:rgba(16,185,129,0.18); color:#34D399; border:1px solid #10B981; padding:2px 8px; border-radius:4px; font-size:0.7rem; font-weight:700;">{status_emp}</span>'
+
+                    # Preço ou Consulta
+                    preco_valor = float(emp.get("preco_a_partir", 0))
+                    texto_preco = formatar_moeda_br(preco_valor) if preco_valor > 0 else "Consulte Disponibilidade"
 
                     html_card = (
                         f'<div class="product-card">'
@@ -388,36 +394,36 @@ def renderizar_grade(imoveis):
                         f'{bloco_img}'
                         f'<div style="padding: 16px 18px 0 18px;">'
                         f'<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">'
-                        f'<span style="background:#1F2937; color:#10B981; border:1px solid #10B981; padding:2px 8px; border-radius:4px; font-size:0.7rem; font-weight:700;">📍 {emp["estado"]} • {emp["programa"]}</span>'
+                        f'<span style="background:#1F2937; color:#10B981; border:1px solid #10B981; padding:2px 8px; border-radius:4px; font-size:0.7rem; font-weight:700;">📍 {emp.get("estado", "SP")} • {emp.get("programa", "MCMV")}</span>'
                         f'{badge_status}'
                         f'</div>'
-                        f'<div style="font-size: 1.25rem; font-weight: 800; color: #FFFFFF; margin-bottom: 4px;">{emp["nome"]}</div>'
-                        f'<div style="font-size: 0.85rem; color: #9CA3AF; margin-bottom: 12px;">{emp["cidade"]}<br><small>{emp["endereco"]}</small></div>'
+                        f'<div style="font-size: 1.25rem; font-weight: 800; color: #FFFFFF; margin-bottom: 4px;">{emp.get("nome", "")}</div>'
+                        f'<div style="font-size: 0.85rem; color: #9CA3AF; margin-bottom: 12px;">{emp.get("cidade", "")}<br><small>{emp.get("endereco", "")}</small></div>'
                         f'<div style="background-color:#0F1520; border-left:3px solid #F97316; padding:8px; border-radius:6px; font-size:0.82rem; color:#E5E7EB; margin-bottom:14px;">'
-                        f'<strong>Tipologia:</strong> {emp["tipologia"]}<br>'
-                        f'<span style="color:#D1D5DB;">{emp["diferenciais"]}</span>'
+                        f'<strong>Tipologia:</strong> {emp.get("tipologia", "")}<br>'
+                        f'<span style="color:#D1D5DB;">{emp.get("diferenciais", "")}</span>'
                         f'</div>'
                         f'</div>'
                         f'</div>'
                         f'<div style="padding: 0 18px 18px 18px;">'
                         f'<div style="font-size: 0.75rem; color: #9CA3AF; text-transform: uppercase;">Unidades a partir de</div>'
-                        f'<div style="font-size: 1.4rem; font-weight: 800; color: #10B981;">{formatar_moeda_br(emp["preco_a_partir"])}</div>'
+                        f'<div style="font-size: 1.4rem; font-weight: 800; color: #10B981;">{texto_preco}</div>'
                         f'</div>'
                         f'</div>'
                     )
 
                     st.markdown(html_card, unsafe_allow_html=True)
 
-                    msg_wpp = f"Olá! Tenho interesse no empreendimento *{emp['nome']}* ({emp['cidade']} - {emp['estado']}). Gostaria de receber a tabela de valores com a equipe do {GERENTE_NOME}."
+                    msg_wpp = f"Olá! Tenho interesse no empreendimento *{emp.get('nome', '')}* ({emp.get('cidade', '')} - {emp.get('estado', 'SP')}). Gostaria de receber a tabela de valores com a equipe do {GERENTE_NOME}."
                     
                     if st.link_button(f"📲 Consultar Equipe Gerente", gerar_link_whatsapp(msg_wpp), use_container_width=True):
-                        registrar_evento("clique_imovel", emp["nome"])
+                        registrar_evento("clique_imovel", emp.get("nome", "Imóvel"))
 
-# Exibição do catálogo dinâmico de São Paulo
-lista_sp = filtrar_lista()
-st.markdown(f"### 🏙️ Empreendimentos em São Paulo (SP)")
-st.markdown(f"**Exibindo {len(lista_sp)} empreendimento(s) disponível(is)**")
-renderizar_grade(lista_sp)
+# Exibição do catálogo dinâmico completo
+lista_imoveis = filtrar_lista()
+st.markdown(f"### 🏙️ Catálogo de Empreendimentos (São Paulo e Região)")
+st.markdown(f"**Exibindo {len(lista_imoveis)} empreendimento(s) disponível(is)**")
+renderizar_grade(lista_imoveis)
 
 # ==============================================================================
 # 9. RODAPÉ INSTITUCIONAL COM CONTATO DIRETO
