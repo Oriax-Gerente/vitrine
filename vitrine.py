@@ -70,7 +70,7 @@ def obter_caminho_recurso(caminho_relativo: str) -> str:
     return os.path.join(base_dir, caminho_relativo)
 
 def normalizar_texto(texto: str) -> str:
-    nfkd = unicodedata.normalize("NFKD", texto.lower())
+    nfkd = unicodedata.normalize("NFKD", str(texto).lower())
     sem_acento = "".join([c for c in nfkd if not unicodedata.combining(c)])
     return sem_acento.replace("-", "_").replace(" ", "_")
 
@@ -117,7 +117,10 @@ def gerar_link_whatsapp(mensagem: str) -> str:
     return f"https://wa.me/{WHATSAPP_NUMERO}?text={urllib.parse.quote(mensagem)}"
 
 def formatar_moeda_br(valor: float) -> str:
-    return f"R$ {valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+    try:
+        return f"R$ {float(valor):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+    except:
+        return "R$ 0,00"
 
 # ==============================================================================
 # 4. ESTILIZAÇÃO VISUAL (TEMA ESCURO + VERDE, BRANCO, LARANJA)
@@ -205,264 +208,39 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ==============================================================================
-# 5. BASE DE DADOS DOS EMPREENDIMENTOS
+# 5. CARREGAMENTO DINÂMICO VIA PLANILHA (tabelavitrine.xlsx)
 # ==============================================================================
-EMPREENDIMENTOS = [
-    {
-        "nome": "L1NE Praça da Árvore",
-        "imagem": "line_praca_da_arvore.jpg",
-        "estado": "SP",
-        "cidade": "São Paulo - Zona Sul (Saúde / Mirandópolis)",
-        "endereco": "Rua Fernando de Noronha, 280",
-        "status": "Em Construção",
-        "tipologia": "1 e 2 Dorms | 31 a 40 m²",
-        "diferenciais": "Próximo ao Metrô Praça da Árvore • Lazer completo no rooftop",
-        "preco_a_partir": 298307.00,
-        "programa": "MCMV / Casa Paulista"
-    },
-    {
-        "nome": "Sinfonia Santo Amaro",
-        "imagem": "sinfonia_santo_amaro.jpg",
-        "estado": "SP",
-        "cidade": "São Paulo - Zona Sul (Santo Amaro)",
-        "endereco": "Rua Ada Negri, 469",
-        "status": "Lançamento",
-        "tipologia": "2 e 3 Dorms com Varanda | 41 a 69 m²",
-        "diferenciais": "Opção de vaga • Piscinas, Quadra de Areia, Coworking e Spa",
-        "preco_a_partir": 308060.00,
-        "programa": "MCMV / SBPE"
-    },
-    {
-        "nome": "View Pq Ecológico",
-        "imagem": "view_parque_ecologico.jpg",
-        "estado": "SP",
-        "cidade": "São Paulo - Zona Leste (Vila Sílvia)",
-        "endereco": "Rua Novo Oriente do Piauí, 35",
-        "status": "Lançamento",
-        "tipologia": "2 Dorms | 40 e 53 m²",
-        "diferenciais": "Ao lado do Parque Ecológico do Tietê • Fácil acesso à Marginal",
-        "preco_a_partir": 268338.00,
-        "programa": "MCMV / Casa Paulista"
-    },
-    {
-        "nome": "Atlas Sacomã",
-        "imagem": "atlas_sacoma.jpg",
-        "estado": "SP",
-        "cidade": "São Paulo - Zona Sul (Sacomã)",
-        "endereco": "Rua Olympia Semeraro, 219",
-        "status": "Lançamento",
-        "tipologia": "1 e 2 Dorms",
-        "diferenciais": "Mobilidade total próximo à Via Anchieta e Estação Sacomã",
-        "preco_a_partir": 275000.00,
-        "programa": "MCMV / Casa Paulista"
-    },
-    {
-        "nome": "MOB Campo Limpo",
-        "imagem": "mob_campo_limpo.jpg",
-        "estado": "SP",
-        "cidade": "São Paulo - Zona Sul (Campo Limpo)",
-        "endereco": "Rua Rudolf Alt, 40",
-        "status": "Lançamento",
-        "tipologia": "2 Dorms | 37 e 39 m²",
-        "diferenciais": "Perto do Metrô Campo Limpo e Shopping • Entrada facilitada",
-        "preco_a_partir": 270666.00,
-        "programa": "MCMV / Casa Paulista"
-    },
-    {
-        "nome": "MOB Barra Funda",
-        "imagem": "mob_barra_funda.jpg",
-        "estado": "SP",
-        "cidade": "São Paulo - Zona Oeste (Barra Funda)",
-        "endereco": "Rua dos Americanos, 465",
-        "status": "Em Construção",
-        "tipologia": "1 e 2 Dorms | 40 m²",
-        "diferenciais": "Localização estratégica no Centro-Oeste • Próximo ao Terminal",
-        "preco_a_partir": 342247.00,
-        "programa": "MCMV / HIS"
-    },
-    {
-        "nome": "L1NE Parada Inglesa",
-        "imagem": "line_parada_inglesa.jpg",
-        "estado": "SP",
-        "cidade": "São Paulo - Zona Norte (Tucuruvi / Parada Inglesa)",
-        "endereco": "Rua do Tramway, 103",
-        "status": "Em Construção",
-        "tipologia": "1 e 2 Dorms | 30 a 40 m²",
-        "diferenciais": "Apenas 450m do Metrô Parada Inglesa • Escritura grátis",
-        "preco_a_partir": 258000.00,
-        "programa": "MCMV / Casa Paulista"
-    },
-    {
-        "nome": "Origem Itaquera",
-        "imagem": "origem_itaquera.jpg",
-        "estado": "SP",
-        "cidade": "São Paulo - Zona Leste (Itaquera)",
-        "endereco": "Rua Agrimensor Sugaya, 842",
-        "status": "Em Construção",
-        "tipologia": "2 Dorms | 40 e 45 m²",
-        "diferenciais": "Próximo à Arena Corinthians e Metrô Itaquera",
-        "preco_a_partir": 265000.00,
-        "programa": "MCMV / Casa Paulista"
-    },
-    {
-        "nome": "Icônico Jaraguá",
-        "imagem": "iconico_jaragua.jpg",
-        "estado": "SP",
-        "cidade": "São Paulo - Zona Noroeste (Jaraguá)",
-        "endereco": "Rua Camocim de São Félix, 44",
-        "status": "Em Construção",
-        "tipologia": "2 Dorms | 40 e 41 m²",
-        "diferenciais": "Vista privilegiada para o Pico do Jaraguá • Próximo à CPTM",
-        "preco_a_partir": 285339.00,
-        "programa": "MCMV / Casa Paulista"
-    },
-    {
-        "nome": "Serena Residence",
-        "imagem": "serena_residence.jpg",
-        "estado": "SP",
-        "cidade": "São Paulo - Zona Leste (Penha / Vila Sílvia)",
-        "endereco": "Região da Penha / Vila Sílvia",
-        "status": "Em Construção",
-        "tipologia": "2 Dorms | 40 e 41 m²",
-        "diferenciais": "Bairro residencial tranquilo com infraestrutura completa",
-        "preco_a_partir": 301904.00,
-        "programa": "MCMV / Casa Paulista"
-    },
-    {
-        "nome": "Altus Vila Prudente",
-        "imagem": "altus_vila_prudente.jpg",
-        "estado": "SP",
-        "cidade": "São Paulo - Zona Leste (Vila Prudente)",
-        "endereco": "Região da Vila Prudente",
-        "status": "Em Construção",
-        "tipologia": "1 e 2 Dorms",
-        "diferenciais": "Fácil acesso ao Metrô Vila Prudente e Monotrilho",
-        "preco_a_partir": 289000.00,
-        "programa": "MCMV / HIS"
-    },
-    {
-        "nome": "Vision Penha",
-        "imagem": "vision-penha.jpg",
-        "estado": "SP",
-        "cidade": "São Paulo - Zona Leste (Penha)",
-        "endereco": "Avenida Amador Bueno da Veiga",
-        "status": "Pronto para Morar",
-        "tipologia": "1 e 2 Dorms",
-        "diferenciais": "Chaves na mão • Use seu FGTS na entrada e mude imediatamente",
-        "preco_a_partir": 295000.00,
-        "programa": "MCMV / SBPE"
-    },
-    {
-        "nome": "Villagio dos Eucaliptos",
-        "imagem": "villagio_eucaliptos.jpg",
-        "estado": "SP",
-        "cidade": "Jundiaí - SP (Bairro Medeiros)",
-        "endereco": "Rua Primo Porcari",
-        "status": "Em Construção",
-        "tipologia": "2 Dorms com Vaga",
-        "diferenciais": "Qualidade de vida no interior de SP • Rodovias Anhanguera e Bandeirantes",
-        "preco_a_partir": 279000.00,
-        "programa": "MCMV / Casa Paulista"
-    },
-    # --- RIO DE JANEIRO (RJ) ---
-    {
-        "nome": "Orla Guanabara",
-        "imagem": "orla_guanabara.jpg",
-        "estado": "RJ",
-        "cidade": "Niterói - RJ (Centro)",
-        "endereco": "Rua Jornalista Rogério Coelho Neto, 250",
-        "status": "Breve Lançamento",
-        "tipologia": "1 e 2 Dorms",
-        "diferenciais": "Antecipação de lançamento • Localização nobre no Centro de Niterói",
-        "preco_a_partir": 290000.00,
-        "programa": "MCMV / SBPE"
-    },
-    {
-        "nome": "Alma Carioca",
-        "imagem": "alma_carioca.jpg",
-        "estado": "RJ",
-        "cidade": "Rio de Janeiro - Zona Norte (Vila Valqueire)",
-        "endereco": "Estrada Intendente Magalhães, 279",
-        "status": "Em Construção",
-        "tipologia": "2 Dorms com Varanda | 37 a 74 m²",
-        "diferenciais": "Opção de suíte • Piscina, academia e churrasqueira gourmet",
-        "preco_a_partir": 264000.00,
-        "programa": "MCMV"
-    },
-    {
-        "nome": "Porto Carioca",
-        "imagem": "porto_carioca.jpg",
-        "estado": "RJ",
-        "cidade": "Rio de Janeiro - Região Central (Porto Maravilha)",
-        "endereco": "Praça Marechal Hermes - Porto Maravilha",
-        "status": "Em Construção",
-        "tipologia": "1 e 2 Dorms",
-        "diferenciais": "Revitalização do Porto Maravilha • Próximo ao VLT",
-        "preco_a_partir": 275000.00,
-        "programa": "MCMV"
-    },
-    {
-        "nome": "Oceanside Recreio",
-        "imagem": "oceanside_recreio.jpg",
-        "estado": "RJ",
-        "cidade": "Rio de Janeiro - Zona Oeste (Pontal Oceânico)",
-        "endereco": "Rua Luiz Carlos Sarolli, 1.111 - Recreio",
-        "status": "Em Construção",
-        "tipologia": "1 e 2 Dorms com Vaga",
-        "diferenciais": "Estilo resort • Próximo às praias do Recreio e Pontal",
-        "preco_a_partir": 315000.00,
-        "programa": "MCMV / SBPE"
-    },
-    # --- MINAS GERAIS (MG) ---
-    {
-        "nome": "Residencial Botticelli",
-        "imagem": "residencial_botticelli.jpg",
-        "estado": "MG",
-        "cidade": "Lagoa Santa - MG (Bairro Bellare)",
-        "endereco": "Via Coletora 1, nº 386 - Bellare",
-        "status": "Breve Lançamento",
-        "tipologia": "1 e 2 Dorms com Vaga",
-        "diferenciais": "Condomínio moderno em Lagoa Santa • Pré-lançamento",
-        "preco_a_partir": 245000.00,
-        "programa": "MCMV"
-    },
-    {
-        "nome": "Caravaggio Loteamento",
-        "imagem": "caravaggio_loteamento.jpg",
-        "estado": "MG",
-        "cidade": "Lagoa Santa - MG (Bairro Bellare)",
-        "endereco": "Via Coletora 1 - Bairro Bellare",
-        "status": "Breve Lançamento",
-        "tipologia": "Lotes Residenciais a partir de 300 m²",
-        "diferenciais": "288 lotes com infraestrutura completa em bairro planejado",
-        "preco_a_partir": 270000.00,
-        "programa": "Financiamento Direto"
-    },
-    {
-        "nome": "Brizze Estoril",
-        "imagem": "brizze_estoril.jpg",
-        "estado": "MG",
-        "cidade": "Belo Horizonte - MG (Bairro Estoril)",
-        "endereco": "Rua Paulo Piedade Campos, 500 - Estoril",
-        "status": "Pronto para Morar",
-        "tipologia": "2 e 3 Dorms | 44 e 59 m²",
-        "diferenciais": "Bairro nobre na Zona Oeste de BH • Entrega imediata",
-        "preco_a_partir": 365000.00,
-        "programa": "SBPE / Bancário"
-    },
-    {
-        "nome": "Veredas do Ouro",
-        "imagem": "veredas_do_ouro.jpg",
-        "estado": "MG",
-        "cidade": "Pedro Leopoldo - MG (Pq Andiara)",
-        "endereco": "Rua Pq Andiara - Pedro Leopoldo",
-        "status": "Em Construção",
-        "tipologia": "Casas / Lotes",
-        "diferenciais": "Tranquilidade e contato com a natureza na Região Metropolitana de BH",
-        "preco_a_partir": 235000.00,
-        "programa": "MCMV"
-    }
-]
+EXCEL_PATH = obter_caminho_recurso("tabelavitrine.xlsx")
+
+def carregar_empreendimentos():
+    if not os.path.exists(EXCEL_PATH):
+        st.error(f"⚠️ O arquivo '{EXCEL_PATH}' não foi encontrado na pasta do projeto! Crie a planilha com os dados de SP.")
+        return []
+    
+    try:
+        df = pd.read_excel(EXCEL_PATH)
+        
+        # Trata as colunas de texto para evitar erros
+        colunas_texto = ["nome", "imagem", "estado", "cidade", "endereco", "status", "tipologia", "diferenciais", "programa"]
+        for col in colunas_texto:
+            if col in df.columns:
+                df[col] = df[col].fillna("").astype(str)
+                
+        # Garante conversão correta dos preços
+        if "preco_a_partir" in df.columns:
+            df["preco_a_partir"] = pd.to_numeric(df["preco_a_partir"], errors="coerce").fillna(0.0)
+            
+        # Filtra apenas o estado de São Paulo (SP) caso haja outros registros por engano
+        if "estado" in df.columns:
+            df = df[df["estado"].str.upper() == "SP"]
+
+        return df.to_dict(orient="records")
+    
+    except Exception as e:
+        st.error(f"Erro ao ler a planilha 'tabelavitrine.xlsx': {e}")
+        return []
+
+EMPREENDIMENTOS = carregar_empreendimentos()
 
 # Registrar visita única por sessão do usuário
 if "visitou_vitrine" not in st.session_state:
@@ -489,12 +267,7 @@ with st.sidebar:
     )
 
     st.markdown("### 🔍 Filtrar Imóveis")
-    estado_selecionado = st.radio(
-        "Selecione o Estado:",
-        options=["Todos os Estados (SP, RJ, MG)", "SP - São Paulo", "RJ - Rio de Janeiro", "MG - Minas Gerais"],
-        index=0
-    )
-
+    
     status_selecionado = st.multiselect(
         "Estágio da Obra:",
         options=["Breve Lançamento", "Lançamento", "Em Construção", "Pronto para Morar"],
@@ -503,10 +276,10 @@ with st.sidebar:
 
     preco_max = st.slider(
         "Valor Máximo do Imóvel (R$):",
-        min_value=100000, max_value=600000, value=600000, step=10000, format="R$ %d"
+        min_value=100000, max_value=800000, value=600000, step=10000, format="R$ %d"
     )
 
-    busca_texto = st.text_input("Buscar por bairro ou nome:", placeholder="Ex: Santo Amaro, Niterói...")
+    busca_texto = st.text_input("Buscar por bairro ou nome:", placeholder="Ex: Santo Amaro, Praça da Árvore...")
 
     st.markdown("---")
     st.markdown("### 🧮 Simulação Rápida MCMV")
@@ -518,7 +291,6 @@ with st.sidebar:
 
     msg_simulacao = f"Olá! Gostaria de fazer uma simulação de financiamento EMCCAMP|INX com a equipe do {GERENTE_NOME}. Renda: {formatar_moeda_br(renda_cliente)}, FGTS: {formatar_moeda_br(fgts_cliente)}."
     
-    # Botão de simulação com rastreamento
     if st.link_button(f"📲 Enviar Simulação ao {GERENTE_NOME}", gerar_link_whatsapp(msg_simulacao), use_container_width=True):
         registrar_evento("clique_botao", "Simulador Rápido MCMV")
 
@@ -555,10 +327,10 @@ msg_geral = f"Olá! Acessei o catálogo digital da EMCCAMP|INX e gostaria de ser
 
 st.markdown(
     f'<div class="hero-banner">'
-    f'<div class="hero-badge">PORTFÓLIO OFICIAL • SP • RJ • MG</div>'
+    f'<div class="hero-badge">PORTFÓLIO OFICIAL • SÃO PAULO (SP)</div>'
     f'<h1 style="color: #FFFFFF; font-size: 2.3rem; margin-bottom: 10px;">Conquiste seu EMCCAMP|INX com Condições Diretas de Construtora</h1>'
     f'<p style="color: #D1D5DB; font-size: 1.05rem; margin-bottom: 20px;">'
-    f'Explore todos os lançamentos, obras em andamento e imóveis prontos em <strong>São Paulo, Rio de Janeiro e Minas Gerais</strong>. '
+    f'Explore todos os lançamentos, obras em andamento e imóveis prontos em <strong>São Paulo e Grande SP</strong>. '
     f'Atendimento exclusivo realizado pela <strong>equipe de corretores do {GERENTE_NOME}</strong>.'
     f'</p>'
     f'</div>',
@@ -571,17 +343,12 @@ st.write("")
 # ==============================================================================
 # 8. FILTRAGEM E EXIBIÇÃO EM GRID PROFISSIONAL
 # ==============================================================================
-def filtrar_lista(sigla_estado=None):
+def filtrar_lista():
     filtrados = []
     for item in EMPREENDIMENTOS:
-        if sigla_estado and item["estado"] != sigla_estado:
-            continue
-        if estado_selecionado != "Todos os Estados (SP, RJ, MG)":
-            if item["estado"] != estado_selecionado.split(" - ")[0]:
-                continue
         if item["status"] not in status_selecionado:
             continue
-        if item["preco_a_partir"] > preco_max:
+        if float(item["preco_a_partir"]) > preco_max:
             continue
         if busca_texto.strip():
             termo = busca_texto.lower().strip()
@@ -607,12 +374,13 @@ def renderizar_grade(imoveis):
                     else:
                         bloco_img = f'<div class="card-img-container"><div class="card-img-placeholder"><span>🏢 EMCCAMP|INX • {emp["nome"]}</span></div></div>'
 
-                    if "Lançamento" in emp["status"]:
-                        badge_status = f'<span style="background:rgba(249,115,22,0.18); color:#FB923C; border:1px solid #F97316; padding:2px 8px; border-radius:4px; font-size:0.7rem; font-weight:700;">{emp["status"]}</span>'
-                    elif "Pronto" in emp["status"]:
-                        badge_status = f'<span style="background:rgba(255,255,255,0.15); color:#FFFFFF; border:1px solid #FFFFFF; padding:2px 8px; border-radius:4px; font-size:0.7rem; font-weight:700;">{emp["status"]}</span>'
+                    status_emp = str(emp["status"])
+                    if "Lançamento" in status_emp:
+                        badge_status = f'<span style="background:rgba(249,115,22,0.18); color:#FB923C; border:1px solid #F97316; padding:2px 8px; border-radius:4px; font-size:0.7rem; font-weight:700;">{status_emp}</span>'
+                    elif "Pronto" in status_emp:
+                        badge_status = f'<span style="background:rgba(255,255,255,0.15); color:#FFFFFF; border:1px solid #FFFFFF; padding:2px 8px; border-radius:4px; font-size:0.7rem; font-weight:700;">{status_emp}</span>'
                     else:
-                        badge_status = f'<span style="background:rgba(16,185,129,0.18); color:#34D399; border:1px solid #10B981; padding:2px 8px; border-radius:4px; font-size:0.7rem; font-weight:700;">{emp["status"]}</span>'
+                        badge_status = f'<span style="background:rgba(16,185,129,0.18); color:#34D399; border:1px solid #10B981; padding:2px 8px; border-radius:4px; font-size:0.7rem; font-weight:700;">{status_emp}</span>'
 
                     html_card = (
                         f'<div class="product-card">'
@@ -642,37 +410,14 @@ def renderizar_grade(imoveis):
 
                     msg_wpp = f"Olá! Tenho interesse no empreendimento *{emp['nome']}* ({emp['cidade']} - {emp['estado']}). Gostaria de receber a tabela de valores com a equipe do {GERENTE_NOME}."
                     
-                    # Botão individual de clique no imóvel com rastreamento
                     if st.link_button(f"📲 Consultar Equipe Gerente", gerar_link_whatsapp(msg_wpp), use_container_width=True):
                         registrar_evento("clique_imovel", emp["nome"])
 
-# Abas por Estado
-aba_todos, aba_sp, aba_rj, aba_mg = st.tabs([
-    "🌎 Todos os Estados",
-    "🏙️ São Paulo (SP)",
-    "🏖️ Rio de Janeiro (RJ)",
-    "⛰️ Minas Gerais (MG)"
-])
-
-with aba_todos:
-    lista = filtrar_lista()
-    st.markdown(f"**Exibindo {len(lista)} empreendimento(s)**")
-    renderizar_grade(lista)
-
-with aba_sp:
-    lista = filtrar_lista("SP")
-    st.markdown(f"**São Paulo (SP) — {len(lista)} empreendimento(s)**")
-    renderizar_grade(lista)
-
-with aba_rj:
-    lista = filtrar_lista("RJ")
-    st.markdown(f"**Rio de Janeiro (RJ) — {len(lista)} empreendimento(s)**")
-    renderizar_grade(lista)
-
-with aba_mg:
-    lista = filtrar_lista("MG")
-    st.markdown(f"**Minas Gerais (MG) — {len(lista)} empreendimento(s)**")
-    renderizar_grade(lista)
+# Exibição do catálogo dinâmico de São Paulo
+lista_sp = filtrar_lista()
+st.markdown(f"### 🏙️ Empreendimentos em São Paulo (SP)")
+st.markdown(f"**Exibindo {len(lista_sp)} empreendimento(s) disponível(is)**")
+renderizar_grade(lista_sp)
 
 # ==============================================================================
 # 9. RODAPÉ INSTITUCIONAL COM CONTATO DIRETO
