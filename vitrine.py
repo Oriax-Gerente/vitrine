@@ -195,13 +195,33 @@ st.markdown("""
     }
 
     .custom-footer {
-        background-color: #111827;
-        border-top: 2px solid #F97316;
-        border-radius: 12px;
-        padding: 24px;
+        background-color: #151C28;
+        border: 1px solid #263143;
+        border-top: 3px solid #F97316;
+        border-radius: 14px;
+        padding: 32px;
         margin-top: 40px;
         text-align: center;
         color: #D1D5DB;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+    }
+
+    .footer-whatsapp-btn {
+        display: inline-block;
+        background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+        color: #FFFFFF !important;
+        padding: 14px 28px;
+        border-radius: 8px;
+        font-weight: 800;
+        font-size: 1.05rem;
+        text-decoration: none !important;
+        box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        margin: 16px 0;
+    }
+    .footer-whatsapp-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(16, 185, 129, 0.5);
     }
 </style>
 """, unsafe_allow_html=True)
@@ -219,13 +239,11 @@ def carregar_empreendimentos():
     try:
         df = pd.read_excel(EXCEL_PATH)
         
-        # Trata as colunas de texto para evitar erros
         colunas_texto = ["nome", "imagem", "estado", "cidade", "endereco", "status", "tipologia", "diferenciais", "programa"]
         for col in colunas_texto:
             if col in df.columns:
                 df[col] = df[col].fillna("").astype(str)
                 
-        # Garante conversão correta dos preços
         if "preco_a_partir" in df.columns:
             df["preco_a_partir"] = pd.to_numeric(df["preco_a_partir"], errors="coerce").fillna(0.0)
 
@@ -237,7 +255,6 @@ def carregar_empreendimentos():
 
 EMPREENDIMENTOS = carregar_empreendimentos()
 
-# Registrar visita única por sessão do usuário
 if "visitou_vitrine" not in st.session_state:
     registrar_evento("visualizacao_pagina", "Home Principal")
     st.session_state["visitou_vitrine"] = True
@@ -263,7 +280,6 @@ with st.sidebar:
 
     st.markdown("### 🔍 Filtrar Imóveis")
     
-    # Lê dinamicamente todos os status presentes na planilha Excel
     opcoes_status = sorted(list(set(str(emp.get("status", "")).strip() for emp in EMPREENDIMENTOS if str(emp.get("status", "")).strip())))
     
     status_selecionado = st.multiselect(
@@ -292,9 +308,6 @@ with st.sidebar:
     if st.link_button(f"📲 Enviar Simulação ao {GERENTE_NOME}", gerar_link_whatsapp(msg_simulacao), use_container_width=True):
         registrar_evento("clique_botao", "Simulador Rápido MCMV")
 
-    # ==========================================================================
-    # PAINEL GERENCIAL DE ACESSOS E CLIQUES (ÁREA DO GERENTE)
-    # ==========================================================================
     st.markdown("---")
     with st.expander("📊 Painel Gerencial (Acessos)"):
         senha_gerente = st.text_input("Senha do Gerente:", type="password")
@@ -384,7 +397,6 @@ def renderizar_grade(imoveis):
                     else:
                         badge_status = f'<span style="background:rgba(16,185,129,0.18); color:#34D399; border:1px solid #10B981; padding:2px 8px; border-radius:4px; font-size:0.7rem; font-weight:700;">{status_emp}</span>'
 
-                    # Preço ou Consulta
                     preco_valor = float(emp.get("preco_a_partir", 0))
                     texto_preco = formatar_moeda_br(preco_valor) if preco_valor > 0 else "Consulte Disponibilidade"
 
@@ -419,23 +431,22 @@ def renderizar_grade(imoveis):
                     if st.link_button(f"📲 Consultar Equipe Gerente", gerar_link_whatsapp(msg_wpp), use_container_width=True):
                         registrar_evento("clique_imovel", emp.get("nome", "Imóvel"))
 
-# Exibição do catálogo dinâmico completo
 lista_imoveis = filtrar_lista()
 st.markdown(f"### 🏙️ Catálogo de Empreendimentos (São Paulo e Região)")
 st.markdown(f"**Exibindo {len(lista_imoveis)} empreendimento(s) disponível(is)**")
 renderizar_grade(lista_imoveis)
 
 # ==============================================================================
-# 9. RODAPÉ INSTITUCIONAL COM CONTATO DIRETO
+# 9. RODAPÉ INSTITUCIONAL COM ESTILO PREMIUM
 # ==============================================================================
 st.markdown(f"""
 <div class="custom-footer">
-    <h3 style="color:#FFFFFF; margin-bottom:8px;">Atendimento Exclusivo — Equipe de Corretores do {GERENTE_NOME}</h3>
-    <p style="color:#9CA3AF; font-size:0.95rem; max-width:750px; margin:0 auto 16px auto;">
+    <h3 style="color:#FFFFFF; margin-bottom:8px; font-size:1.4rem; font-weight:800;">Atendimento Exclusivo — Equipe de Corretores do {GERENTE_NOME}</h3>
+    <p style="color:#9CA3AF; font-size:0.95rem; max-width:750px; margin:0 auto 16px auto; line-height: 1.5;">
         Consultoria especializada em Minha Casa Minha Vida, Casa Paulista, uso de FGTS e aprovação de crédito junto à Caixa Econômica Federal.
         Todos os atendimentos deste portal são direcionados diretamente para a equipe do <strong>{GERENTE_NOME}</strong>.
     </p>
-    <a href="{gerar_link_whatsapp(msg_geral)}" target="_blank" class="btn-whatsapp-hero">
+    <a href="{gerar_link_whatsapp(msg_geral)}" target="_blank" class="footer-whatsapp-btn">
         📞 Chamar no WhatsApp: {WHATSAPP_DISPLAY}
     </a>
     <p style="color:#6B7280; font-size:0.8rem; margin-top:18px;">
